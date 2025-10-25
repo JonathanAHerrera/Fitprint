@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { View, Text, Image, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 
 export default function ProfileScreen() {
   const [user, setUser] = useState<any>(null);
@@ -37,7 +38,7 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#9E4784" />
+        <ActivityIndicator size="large" color="#FF6FCF" />
       </View>
     );
   }
@@ -51,10 +52,8 @@ export default function ProfileScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      {user.picture && (
-        <Image source={{ uri: user.picture }} style={styles.avatar} />
-      )}
+    <LinearGradient colors={["#37306B", "#66347F", "#D27685"]} style={styles.container}>
+      {user.picture && <Image source={{ uri: user.picture }} style={styles.avatar} />}
 
       <Text style={styles.name}>{user.full_name}</Text>
       <Text style={styles.email}>{user.email}</Text>
@@ -66,17 +65,28 @@ export default function ProfileScreen() {
       <TouchableOpacity style={[styles.button, styles.logoutButton]} onPress={handleLogout}>
         <Text style={[styles.buttonText, { color: "#37306B" }]}>Log Out</Text>
       </TouchableOpacity>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#37306B" },
-  container: { flex: 1, backgroundColor: "#37306B", alignItems: "center", paddingTop: 60 },
-  avatar: { width: 110, height: 110, borderRadius: 55, borderWidth: 3, borderColor: "#9E4784", marginBottom: 20 },
-  name: { fontSize: 26, color: "white", fontWeight: "bold", marginBottom: 4 },
-  email: { fontSize: 16, color: "#cfcfcf", marginBottom: 40 },
-  button: { backgroundColor: "#9E4784", paddingVertical: 14, paddingHorizontal: 32, borderRadius: 10, marginTop: 15 },
+  container: { flex: 1, alignItems: "center", paddingTop: 60 },
+  avatar: { width: 120, height: 120, borderRadius: 60, borderWidth: 3, borderColor: "#FF6FCF", marginBottom: 20 },
+  name: { fontSize: 26, color: "white", fontWeight: "bold", marginBottom: 4, textShadowColor: "rgba(0,0,0,0.3)", textShadowOffset: { width: 2, height: 2 }, textShadowRadius: 4 },
+  email: { fontSize: 16, color: "#FFD6E0", marginBottom: 40 },
+  button: {
+    backgroundColor: "#FF6FCF",
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    marginTop: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
   buttonText: { color: "white", fontSize: 18, fontWeight: "600" },
   logoutButton: { backgroundColor: "#fff" },
 });
