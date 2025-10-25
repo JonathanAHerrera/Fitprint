@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image, Alert, Platform } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Image, Alert, Platform, ActivityIndicator } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
+import { apiService } from "../services/api";
 
 export default function CaptureScreen() {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [cameraPermission, setCameraPermission] = useState<boolean | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Check camera permission on mount
   useEffect(() => {
@@ -64,13 +66,40 @@ export default function CaptureScreen() {
     }
   };
 
-  // Analyze selected photo
-  const analyzePhoto = () => {
-    if (photoUri) {
-      router.push({
+  // Analyze selected photo with AI
+  const analyzePhoto = async () => {
+    if (!photoUri) return;
+
+    console.log("Starting analysis for photo:", photoUri);
+    setIsAnalyzing(true);
+    try {
+      // Generate a unique user ID (in production, this would come from authentication)
+      const userId = `user_${Date.now()}`;
+      console.log("Generated user ID:", userId);
+      
+      // Call your FastAPI backend
+      console.log("Calling API service...");
+      const analysisResult = await apiService.analyzeOutfit(userId, photoUri);
+      
+      console.log("Analysis result:", analysisResult);
+      console.log("About to navigate to report page...");
+      
+      // Navigate directly to report page
+      console.log("Navigating to report page...");
+      router.replace({
         pathname: "/report",
-        params: { photo: photoUri },
+        params: { 
+          photo: photoUri,
+          analysisData: JSON.stringify(analysisResult)
+        },
       });
+      console.log("Navigation command sent");
+    } catch (error) {
+      console.error("Error analyzing photo:", error);
+      Alert.alert("Analysis Failed", "Could not analyze the image. Please try again.");
+    } finally {
+      setIsAnalyzing(false);
+      console.log("Analysis completed, isAnalyzing set to false");
     }
   };
 
@@ -81,12 +110,24 @@ export default function CaptureScreen() {
       {photoUri ? (
         <View style={styles.photoContainer}>
           <Image source={{ uri: photoUri }} style={styles.image} />
-          <TouchableOpacity style={styles.button} onPress={analyzePhoto}>
-            <Text style={styles.buttonText}>Analyze Sustainability</Text>
+          <TouchableOpacity 
+            style={[styles.button, isAnalyzing && styles.disabledButton]} 
+            onPress={analyzePhoto}
+            disabled={isAnalyzing}
+          >
+            {isAnalyzing ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator color="white" size="small" />
+                <Text style={styles.buttonText}>Analyzing...</Text>
+              </View>
+            ) : (
+              <Text style={styles.buttonText}>Analyze Sustainability</Text>
+            )}
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.button, styles.outlineButton]}
             onPress={() => setPhotoUri(null)}
+            disabled={isAnalyzing}
           >
             <Text style={[styles.buttonText, { color: "#9E4784" }]}>Retake Photo</Text>
           </TouchableOpacity>
@@ -163,4 +204,12 @@ const styles = StyleSheet.create({
   },
   outlineButton: { backgroundColor: "#fff" },
   buttonText: { color: "white", fontSize: 16, fontWeight: "600" },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
 });
