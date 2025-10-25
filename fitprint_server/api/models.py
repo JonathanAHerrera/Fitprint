@@ -32,7 +32,7 @@ class ClothingResponse(BaseModel):
 
 # Sustainability Report Models
 class CategoryScore(BaseModel):
-    score: int
+    score: float  # Changed from int to float to support decimal scores like 1.5, 2.5, etc.
     description: str
 
 class Categories(BaseModel):

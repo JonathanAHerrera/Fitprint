@@ -20,8 +20,7 @@ class GoogleSearchService:
                 'cx': self.search_engine_id,
                 'searchType': 'image',
                 'num': 10,  # Get top 10 results
-                'imgType': 'photo',
-                'imgSize': 'medium'
+                'imgType': 'photo'
             }
             
             # Perform the search
@@ -121,5 +120,146 @@ class GoogleSearchService:
                 "success": False,
                 "error": f"Text search failed: {str(e)}"
             }
+    
+    async def search_shopping_results(self, query: str, num_results: int = 3) -> Dict[str, Any]:
+        """Search for shopping results with images and links"""
+        try:
+            logger.info(f"Searching for shopping results: {query}")
+            
+            # Search for more results than needed so we can filter
+            search_params = {
+                'q': query,
+                'cx': self.search_engine_id,
+                'num': 10,  # Get more results to filter
+            }
+            
+            result = self.service.cse().list(**search_params).execute()
+            search_results = result.get('items', [])
+            
+            # Parse results into a clean format
+            alternatives = []
+            for item in search_results:
+                title = item.get('title', 'Product')
+                link = item.get('link', '')
+                snippet = item.get('snippet', '')
+                
+                # Filter out non-shopping sites
+                if not self._is_valid_clothing_store(link, title):
+                    logger.info(f"Filtered out non-store result: {link}")
+                    continue
+                
+                # Try to get image from pagemap
+                image_url = ""
+                pagemap = item.get('pagemap', {})
+                if 'cse_image' in pagemap and len(pagemap['cse_image']) > 0:
+                    image_url = pagemap['cse_image'][0].get('src', '')
+                elif 'cse_thumbnail' in pagemap and len(pagemap['cse_thumbnail']) > 0:
+                    image_url = pagemap['cse_thumbnail'][0].get('src', '')
+                
+                # Extract brand from title or link
+                brand = self._extract_brand_from_text(title + " " + link)
+                
+                alternative = {
+                    "name": title[:100],  # Limit title length
+                    "brand": brand,
+                    "image_url": image_url,
+                    "sustainability_score": 4.0,  # Default score for sustainable search results
+                    "link": link,
+                    "why_sustainable": snippet[:200] if snippet else "Sustainable alternative found through eco-friendly search"
+                }
+                alternatives.append(alternative)
+                
+                # Stop once we have enough valid results
+                if len(alternatives) >= num_results:
+                    break
+            
+            logger.info(f"Found {len(alternatives)} valid shopping alternatives after filtering")
+            return {
+                "success": True,
+                "alternatives": alternatives
+            }
+            
+        except Exception as e:
+            logger.error(f"Shopping search failed: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Shopping search failed: {str(e)}",
+                "alternatives": []
+            }
+    
+    def _is_valid_clothing_store(self, url: str, title: str) -> bool:
+        """Check if the URL is from a valid clothing store"""
+        url_lower = url.lower()
+        title_lower = title.lower()
+        
+        # Blacklist - sites to exclude
+        blacklist = [
+            'reddit.com', 'facebook.com', 'twitter.com', 'instagram.com',
+            'pinterest.com', 'youtube.com', 'tiktok.com',
+            'wikipedia.org', 'wiki', 'blog', 'forum',
+            'news', 'article', 'review-site', 'comparison'
+        ]
+        
+        for blocked in blacklist:
+            if blocked in url_lower:
+                return False
+        
+        # Whitelist - known clothing/fashion stores
+        clothing_stores = [
+            'patagonia.com', 'tentree.com', 'everlane.com', 'reformation.com',
+            'outerknown.com', 'allbirds.com', 'girlfriend.com', 'wearpact.com',
+            'kotn.com', 'thought', 'peopletree.co', 'organicbasics.com',
+            'armedangels.com', 'nudiejeans.com', 'veja-store.com',
+            'etsy.com', 'fairindigo.com', 'alternativeapparel.com',
+            'shop', 'store', 'buy', 'clothing', 'apparel', 'fashion',
+            'wear', 'garment', 'outfit', 'dress', 'shirt', 'pants',
+            'product', 'item', 'collection'
+        ]
+        
+        # Check if URL or title contains clothing-related keywords
+        for store_keyword in clothing_stores:
+            if store_keyword in url_lower or store_keyword in title_lower:
+                return True
+        
+        # Additional check: if title mentions clothing items
+        clothing_items = [
+            'shirt', 't-shirt', 'tee', 'top', 'blouse', 'sweater', 'hoodie',
+            'jacket', 'coat', 'pants', 'jeans', 'shorts', 'skirt', 'dress',
+            'shoes', 'sneakers', 'boots', 'socks', 'underwear', 'bra',
+            'hat', 'cap', 'scarf', 'gloves', 'belt', 'bag'
+        ]
+        
+        for item in clothing_items:
+            if item in title_lower:
+                return True
+        
+        return False
+    
+    def _extract_brand_from_text(self, text: str) -> str:
+        """Extract brand name from text"""
+        text_lower = text.lower()
+        
+        # List of sustainable brands to look for
+        sustainable_brands = [
+            'patagonia', 'tentree', 'everlane', 'reformation', 'outerknown',
+            'allbirds', 'girlfriend collective', 'pact', 'kotn', 'thought',
+            'people tree', 'organic basics', 'armedangels', 'nudie jeans',
+            'veja', 'etsy', 'fair indigo', 'alternative apparel'
+        ]
+        
+        for brand in sustainable_brands:
+            if brand in text_lower:
+                return brand.title()
+        
+        # If no sustainable brand found, try to extract from domain
+        if 'http' in text_lower:
+            try:
+                domain = text_lower.split('//')[1].split('/')[0]
+                domain = domain.replace('www.', '').replace('.com', '').replace('.org', '')
+                return domain.title()
+            except:
+                pass
+        
+        return "Sustainable Brand"
 
 google_search_service = GoogleSearchService()
