@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from datetime import datetime
+import uuid
 from database import dynamodb_service
 from ..models import ClothingCreate, ClothingUpdate
 
@@ -8,16 +9,24 @@ router = APIRouter(prefix="/clothing", tags=["clothing"])
 
 @router.post("/")
 async def create_clothing_item(clothing: ClothingCreate):
-    """Create a new clothing item"""
+    """Create a new clothing item with auto-generated ID"""
+    # Generate a unique clothing ID
+    clothing_id = str(uuid.uuid4())
+    
     item_data = {
-        "clothing_id": clothing.clothing_id,
+        "clothing_id": clothing_id,
+        "user_id": clothing.user_id,
         "brand": clothing.brand,
         "image_file": clothing.image_file,
         "created_at": str(datetime.now().isoformat())
     }
     result = await dynamodb_service.create_item(item_data)
     if result["success"]:
-        return {"message": "Clothing item created successfully", "item": result["item"]}
+        return {
+            "message": "Clothing item created successfully", 
+            "clothing_id": clothing_id,
+            "item": result["item"]
+        }
     else:
         raise HTTPException(status_code=400, detail=result["error"])
 

@@ -3,6 +3,7 @@ from botocore.exceptions import ClientError
 from typing import Dict, Any, List, Optional
 from config import settings
 import json
+from decimal import Decimal
 
 class DynamoDBService:
     def __init__(self):
@@ -23,20 +24,36 @@ class DynamoDBService:
             dynamodb_kwargs['endpoint_url'] = settings.DYNAMODB_ENDPOINT_URL
             
         self.dynamodb = boto3.resource('dynamodb', **dynamodb_kwargs)
-        self.table = self.dynamodb.Table(settings.DYNAMODB_TABLE_NAME)
+        self.clothing_table = self.dynamodb.Table(settings.DYNAMODB_TABLE_NAME)
+        self.sustainability_table = self.dynamodb.Table('sustainability-reports')
     
-    async def create_item(self, item: Dict[str, Any]) -> Dict[str, Any]:
+    def _convert_floats_to_decimal(self, obj):
+        """Convert float values to Decimal for DynamoDB compatibility"""
+        if isinstance(obj, float):
+            return Decimal(str(obj))
+        elif isinstance(obj, dict):
+            return {k: self._convert_floats_to_decimal(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_floats_to_decimal(item) for item in obj]
+        else:
+            return obj
+    
+    async def create_item(self, item: Dict[str, Any], table_name: str = "clothing") -> Dict[str, Any]:
         """Create a new item in DynamoDB"""
         try:
-            response = self.table.put_item(Item=item)
+            table = self.clothing_table if table_name == "clothing" else self.sustainability_table
+            # Convert floats to Decimal for DynamoDB compatibility
+            converted_item = self._convert_floats_to_decimal(item)
+            response = table.put_item(Item=converted_item)
             return {"success": True, "item": item, "response": response}
         except ClientError as e:
             return {"success": False, "error": str(e)}
     
-    async def get_item(self, key: Dict[str, Any]) -> Dict[str, Any]:
+    async def get_item(self, key: Dict[str, Any], table_name: str = "clothing") -> Dict[str, Any]:
         """Get an item by its key"""
         try:
-            response = self.table.get_item(Key=key)
+            table = self.clothing_table if table_name == "clothing" else self.sustainability_table
+            response = table.get_item(Key=key)
             if 'Item' in response:
                 return {"success": True, "item": response['Item']}
             else:
@@ -45,10 +62,11 @@ class DynamoDBService:
             return {"success": False, "error": str(e)}
     
     async def update_item(self, key: Dict[str, Any], update_expression: str, 
-                         expression_attribute_values: Dict[str, Any]) -> Dict[str, Any]:
+                         expression_attribute_values: Dict[str, Any], table_name: str = "clothing") -> Dict[str, Any]:
         """Update an item in DynamoDB"""
         try:
-            response = self.table.update_item(
+            table = self.clothing_table if table_name == "clothing" else self.sustainability_table
+            response = table.update_item(
                 Key=key,
                 UpdateExpression=update_expression,
                 ExpressionAttributeValues=expression_attribute_values,
@@ -58,18 +76,20 @@ class DynamoDBService:
         except ClientError as e:
             return {"success": False, "error": str(e)}
     
-    async def delete_item(self, key: Dict[str, Any]) -> Dict[str, Any]:
+    async def delete_item(self, key: Dict[str, Any], table_name: str = "clothing") -> Dict[str, Any]:
         """Delete an item from DynamoDB"""
         try:
-            response = self.table.delete_item(Key=key)
+            table = self.clothing_table if table_name == "clothing" else self.sustainability_table
+            response = table.delete_item(Key=key)
             return {"success": True, "response": response}
         except ClientError as e:
             return {"success": False, "error": str(e)}
     
-    async def scan_table(self, limit: int = 100) -> Dict[str, Any]:
+    async def scan_table(self, limit: int = 100, table_name: str = "clothing") -> Dict[str, Any]:
         """Scan all items in the table"""
         try:
-            response = self.table.scan(Limit=limit)
+            table = self.clothing_table if table_name == "clothing" else self.sustainability_table
+            response = table.scan(Limit=limit)
             return {"success": True, "items": response.get('Items', [])}
         except ClientError as e:
             return {"success": False, "error": str(e)}

@@ -2,11 +2,13 @@ from fastapi import FastAPI, HTTPException
 from database import dynamodb_service
 from api.models import ItemCreate, ItemUpdate, ItemKey
 from api.routes.clothing_routes import router as clothing_router
+from api.routes.sustainability_routes import router as sustainability_router
 
 app = FastAPI(title="Fitprint API", description="API for Fitprint fitness tracking app")
 
-# Include clothing routes
+# Include routes
 app.include_router(clothing_router)
+app.include_router(sustainability_router)
 
 @app.get("/")
 async def root():
