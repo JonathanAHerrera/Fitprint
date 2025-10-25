@@ -16,5 +16,16 @@ class Settings:
     
     # For local development (if using DynamoDB Local)
     DYNAMODB_ENDPOINT_URL: Optional[str] = os.getenv("DYNAMODB_ENDPOINT_URL")
+    
+    # S3 Configuration
+    S3_BUCKET_NAME: str = os.getenv("S3_BUCKET_NAME", "fitprint-images")
+    S3_REGION: str = os.getenv("S3_REGION", "us-west-2")
+    
+    # Google Custom Search API
+    GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "YOUR_GOOGLE_API_KEY_HERE")
+    GOOGLE_SEARCH_ENGINE_ID: str = os.getenv("GOOGLE_SEARCH_ENGINE_ID", "YOUR_SEARCH_ENGINE_ID_HERE")
+    
+    # Gemini AI Configuration
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 
 settings = Settings()
