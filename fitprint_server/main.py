@@ -18,6 +18,7 @@ from pydantic import BaseModel
 
 from api.models import ItemCreate, ItemUpdate
 from api.routes.clothing_routes import router as clothing_router
+from api.routes.sustainability_routes import router as sustainability_router
 from config import settings
 from database import dynamodb_service
 
@@ -48,7 +49,7 @@ app.add_middleware(
 
 # Existing routers
 app.include_router(clothing_router)
-
+app.include_router(sustainability_router)
 
 @app.get("/")
 async def root() -> Dict[str, str]:
