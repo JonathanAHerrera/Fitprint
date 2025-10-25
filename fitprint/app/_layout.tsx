@@ -15,11 +15,11 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="home" options={{ headerShown: false }} />
-        <Stack.Screen name="capture" options={{ headerShown: false }} />
-        <Stack.Screen name="report" options={{ headerShown: false }} />
-        <Stack.Screen name="wardrobe" options={{ headerShown: false }} />
+        <Stack.Screen name="login/index" options={{ headerShown: false }} />
+        <Stack.Screen name="home/index" options={{ headerShown: false }} />
+        <Stack.Screen name="capture/index" options={{ headerShown: false }} />
+        <Stack.Screen name="report/index" options={{ headerShown: false }} />
+        <Stack.Screen name="wardrobe/index" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

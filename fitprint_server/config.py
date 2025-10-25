@@ -2,8 +2,8 @@ import os
 from typing import Optional
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from .env file, allowing updates without restarting shells
+load_dotenv(override=True)
 
 class Settings:
     # AWS Configuration

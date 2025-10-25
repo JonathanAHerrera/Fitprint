@@ -55,7 +55,7 @@
       "googleAndroidClientId": "86637725207-vtnnpd4t7kr5qel6e475e97mhrapnst5.apps.googleusercontent.com",
       "googleIosClientId": "86637725207-5bdas98jrbfr1t3uedqqhorqct169cvj.apps.googleusercontent.com",
       "googleWebClientId": "86637725207-7tpmbmb1oguvp1h9b7r16r1n6roivlpp.apps.googleusercontent.com",
-      "backendBaseUrl": "http://localhost:8081",
+      "backendBaseUrl": "http://localhost:8000",
       "expoAuthRedirect": "https://auth.expo.io/@rainsuds/fitprint"
     }
   }
