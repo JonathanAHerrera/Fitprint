@@ -26,6 +26,7 @@ class DynamoDBService:
         self.dynamodb = boto3.resource('dynamodb', **dynamodb_kwargs)
         self.clothing_table = self.dynamodb.Table(settings.DYNAMODB_TABLE_NAME)
         self.sustainability_table = self.dynamodb.Table('sustainability-reports')
+        self.alternatives_table = self.dynamodb.Table('alternatives')
     
     def _convert_floats_to_decimal(self, obj):
         """Convert float values to Decimal for DynamoDB compatibility"""
@@ -41,7 +42,15 @@ class DynamoDBService:
     async def create_item(self, item: Dict[str, Any], table_name: str = "clothing") -> Dict[str, Any]:
         """Create a new item in DynamoDB"""
         try:
-            table = self.clothing_table if table_name == "clothing" else self.sustainability_table
+            if table_name == "clothing":
+                table = self.clothing_table
+            elif table_name == "sustainability":
+                table = self.sustainability_table
+            elif table_name == "alternatives":
+                table = self.alternatives_table
+            else:
+                return {"success": False, "error": f"Unknown table: {table_name}"}
+            
             # Convert floats to Decimal for DynamoDB compatibility
             converted_item = self._convert_floats_to_decimal(item)
             response = table.put_item(Item=converted_item)
@@ -52,7 +61,15 @@ class DynamoDBService:
     async def get_item(self, key: Dict[str, Any], table_name: str = "clothing") -> Dict[str, Any]:
         """Get an item by its key"""
         try:
-            table = self.clothing_table if table_name == "clothing" else self.sustainability_table
+            if table_name == "clothing":
+                table = self.clothing_table
+            elif table_name == "sustainability":
+                table = self.sustainability_table
+            elif table_name == "alternatives":
+                table = self.alternatives_table
+            else:
+                return {"success": False, "error": f"Unknown table: {table_name}"}
+            
             response = table.get_item(Key=key)
             if 'Item' in response:
                 return {"success": True, "item": response['Item']}
@@ -65,7 +82,15 @@ class DynamoDBService:
                          expression_attribute_values: Dict[str, Any], table_name: str = "clothing") -> Dict[str, Any]:
         """Update an item in DynamoDB"""
         try:
-            table = self.clothing_table if table_name == "clothing" else self.sustainability_table
+            if table_name == "clothing":
+                table = self.clothing_table
+            elif table_name == "sustainability":
+                table = self.sustainability_table
+            elif table_name == "alternatives":
+                table = self.alternatives_table
+            else:
+                return {"success": False, "error": f"Unknown table: {table_name}"}
+            
             response = table.update_item(
                 Key=key,
                 UpdateExpression=update_expression,
@@ -79,7 +104,15 @@ class DynamoDBService:
     async def delete_item(self, key: Dict[str, Any], table_name: str = "clothing") -> Dict[str, Any]:
         """Delete an item from DynamoDB"""
         try:
-            table = self.clothing_table if table_name == "clothing" else self.sustainability_table
+            if table_name == "clothing":
+                table = self.clothing_table
+            elif table_name == "sustainability":
+                table = self.sustainability_table
+            elif table_name == "alternatives":
+                table = self.alternatives_table
+            else:
+                return {"success": False, "error": f"Unknown table: {table_name}"}
+            
             response = table.delete_item(Key=key)
             return {"success": True, "response": response}
         except ClientError as e:
@@ -88,17 +121,34 @@ class DynamoDBService:
     async def scan_table(self, limit: int = 100, table_name: str = "clothing") -> Dict[str, Any]:
         """Scan all items in the table"""
         try:
-            table = self.clothing_table if table_name == "clothing" else self.sustainability_table
+            if table_name == "clothing":
+                table = self.clothing_table
+            elif table_name == "sustainability":
+                table = self.sustainability_table
+            elif table_name == "alternatives":
+                table = self.alternatives_table
+            else:
+                return {"success": False, "error": f"Unknown table: {table_name}"}
+            
             response = table.scan(Limit=limit)
             return {"success": True, "items": response.get('Items', [])}
         except ClientError as e:
             return {"success": False, "error": str(e)}
     
     async def query_items(self, key_condition_expression: str, 
-                         expression_attribute_values: Dict[str, Any]) -> Dict[str, Any]:
+                         expression_attribute_values: Dict[str, Any], table_name: str = "clothing") -> Dict[str, Any]:
         """Query items with a key condition"""
         try:
-            response = self.table.query(
+            if table_name == "clothing":
+                table = self.clothing_table
+            elif table_name == "sustainability":
+                table = self.sustainability_table
+            elif table_name == "alternatives":
+                table = self.alternatives_table
+            else:
+                return {"success": False, "error": f"Unknown table: {table_name}"}
+            
+            response = table.query(
                 KeyConditionExpression=key_condition_expression,
                 ExpressionAttributeValues=expression_attribute_values
             )

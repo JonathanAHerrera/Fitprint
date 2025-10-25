@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from datetime import datetime
 
 # Generic models for general DynamoDB operations
@@ -67,3 +67,42 @@ class SustainabilityReportCreate(BaseModel):
     overall_description: str
     regional_alerts: RegionalAlerts
     alternative_ids: list[str]
+
+# Image Upload Models
+class ImageUploadResponse(BaseModel):
+    success: bool
+    image_url: str
+    filename: str
+    bucket: str
+
+# Alternative Product Models
+class AlternativeProduct(BaseModel):
+    alternative_id: str
+    name: str
+    brand: str
+    image_url: str
+    sustainability_score: float
+    link: str
+    why_sustainable: str
+    clothing_id: str  # Reference to original clothing item
+
+class AlternativeProductCreate(BaseModel):
+    name: str
+    brand: str
+    image_url: str
+    sustainability_score: float
+    link: str
+    why_sustainable: str
+    clothing_id: str
+
+# Outfit Analysis Models
+class OutfitAnalysisRequest(BaseModel):
+    user_id: str
+    # Image file will be handled separately in the endpoint
+
+class OutfitAnalysisResponse(BaseModel):
+    clothing_item: ClothingResponse
+    sustainability_report: SustainabilityReport
+    alternatives: List[AlternativeProduct]
+    analysis_id: str
+    created_at: str
