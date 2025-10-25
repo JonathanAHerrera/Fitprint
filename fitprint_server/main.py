@@ -24,7 +24,7 @@ from config import settings
 from database import dynamodb_service
 
 
-load_dotenv()
+load_dotenv(override=True)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
@@ -32,11 +32,12 @@ logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 USERS_TABLE_NAME = os.getenv("USERS_TABLE_NAME")
 
-# Temporarily disabled auth validation - team member working on auth
-# if not GOOGLE_CLIENT_ID:
-#     raise RuntimeError("Missing GOOGLE_CLIENT_ID environment variable for Google sign-in.")
-# if not USERS_TABLE_NAME:
-#     raise RuntimeError("Missing USERS_TABLE_NAME environment variable for DynamoDB storage.")
+logger.info("Using Google client ID audience %s", GOOGLE_CLIENT_ID)
+
+if not GOOGLE_CLIENT_ID:
+    raise RuntimeError("Missing GOOGLE_CLIENT_ID environment variable for Google sign-in.")
+if not USERS_TABLE_NAME:
+    raise RuntimeError("Missing USERS_TABLE_NAME environment variable for DynamoDB storage.")
 
 
 app = FastAPI(title="Fitprint API", description="API for Fitprint fitness tracking app")
