@@ -6,6 +6,7 @@ from database import dynamodb_service
 from services.s3_service import s3_service
 from services.google_search_service import google_search_service
 from services.gemini_service import gemini_service
+from services.fast_gemini_service import fast_gemini_service
 from ..models import (
     OutfitAnalysisResponse, 
     ClothingResponse, 
@@ -54,34 +55,24 @@ async def analyze_outfit(
         image_url = upload_result["image_url"]
         logger.info(f"Image uploaded successfully: {image_url}")
         
-        # Step 2: Google Reverse Image Search
-        logger.info("Performing Google reverse image search...")
-        search_result = await google_search_service.reverse_image_search(image_url)
+        # Step 2: Use Gemini Vision to identify the brand from the image
+        logger.info("Using Gemini Vision to identify brand from image...")
+        vision_result = await fast_gemini_service.identify_brand_from_image(image_url)
         
-        if not search_result["success"]:
-            logger.warning(f"Google search failed: {search_result['error']}")
-            # Continue with fallback data
-            brand_info = {
-                "brand": "Unknown Brand",
-                "confidence": 0,
-                "product_title": "Unknown Product",
-                "product_description": "Unable to identify product",
-                "product_link": "",
-                "product_image": "",
-                "all_brands_found": [],
-                "total_matches": 0
-            }
+        if vision_result["success"]:
+            brand_info = vision_result["brand_info"]
+            logger.info(f"Brand identified by Gemini Vision: {brand_info['brand']} (confidence: {brand_info.get('confidence', 0)})")
         else:
-            brand_info = search_result["brand_info"]
+            logger.warning(f"Gemini Vision failed: {vision_result.get('error', 'Unknown error')}")
+            brand_info = vision_result["brand_info"]  # Use fallback data
         
-        logger.info(f"Brand identified: {brand_info['brand']} (confidence: {brand_info['confidence']})")
+        logger.info(f"Brand identified: {brand_info['brand']}")
         
-        # Step 3: Generate sustainability report via Gemini
+        # Step 3: Generate sustainability report via Fast Gemini
         logger.info("Generating sustainability report...")
-        report_result = await gemini_service.generate_sustainability_report(
+        report_result = await fast_gemini_service.generate_sustainability_report(
             brand=brand_info["brand"],
-            product_info=brand_info,
-            image_url=image_url
+            product_info=brand_info
         )
         
         if not report_result["success"]:
@@ -91,26 +82,58 @@ async def analyze_outfit(
         else:
             report_data = report_result["report_data"]
         
-        # Step 4: Find sustainable alternatives via Gemini
-        logger.info("Finding sustainable alternatives...")
-        alternatives_result = await gemini_service.find_sustainable_alternatives(
+        # Step 4: Generate search query and find sustainable alternatives via Google Shopping
+        logger.info("Generating shopping search query...")
+        search_query = await fast_gemini_service.generate_shopping_search_query(
             brand=brand_info["brand"],
             product_info=brand_info
         )
         
-        if not alternatives_result["success"]:
-            logger.warning(f"Gemini alternatives generation failed: {alternatives_result['error']}")
+        logger.info(f"Searching Google Shopping with query: {search_query}")
+        shopping_result = await google_search_service.search_shopping_results(
+            query=search_query,
+            num_results=3
+        )
+        
+        if not shopping_result["success"] or len(shopping_result["alternatives"]) == 0:
+            logger.warning(f"Google Shopping search failed or returned no results: {shopping_result.get('error', 'No results')}")
             # Use fallback alternatives
-            alternatives_data = gemini_service._create_fallback_alternatives()
+            alternatives_data = [
+                {
+                    "name": "Organic Cotton T-Shirt",
+                    "brand": "Patagonia",
+                    "image_url": "",
+                    "sustainability_score": 4.5,
+                    "link": "https://www.patagonia.com",
+                    "why_sustainable": "Made with 100% organic cotton and Fair Trade certified"
+                },
+                {
+                    "name": "Recycled Polyester Hoodie", 
+                    "brand": "Reformation",
+                    "image_url": "",
+                    "sustainability_score": 4.2,
+                    "link": "https://www.thereformation.com",
+                    "why_sustainable": "Uses recycled polyester from plastic bottles, carbon neutral shipping"
+                },
+                {
+                    "name": "Hemp Blend Jeans",
+                    "brand": "Everlane", 
+                    "image_url": "",
+                    "sustainability_score": 4.7,
+                    "link": "https://www.everlane.com",
+                    "why_sustainable": "Hemp requires 50% less water than cotton, biodegradable materials"
+                }
+            ]
         else:
-            alternatives_data = alternatives_result["alternatives"]
+            alternatives_data = shopping_result["alternatives"]
+            logger.info(f"Found {len(alternatives_data)} alternatives from Google Shopping")
         
         # Step 5: Create clothing item
         clothing_id = str(uuid.uuid4())
         clothing_item = {
             "clothing_id": clothing_id,
             "user_id": user_id,
-            "brand": brand_info["brand"],
+            "brand": brand_info.get("brand", "Unknown Brand") or "Unknown Brand",
             "image_file": image_url,
             "created_at": created_at
         }
@@ -130,7 +153,7 @@ async def analyze_outfit(
         sustainability_report = {
             "report_id": report_id,
             "clothing_id": clothing_id,
-            "brand": brand_info["brand"],
+            "brand": brand_info.get("brand", "Unknown Brand") or "Unknown Brand",
             "categories": categories_data,
             "overall_score": report_data.get("overall_score", 3.0),
             "overall_description": report_data.get("overall_description", "Sustainability analysis completed"),
@@ -186,14 +209,14 @@ async def analyze_outfit(
             clothing_item=ClothingResponse(
                 clothing_id=clothing_id,
                 user_id=user_id,
-                brand=brand_info["brand"],
+                brand=brand_info.get("brand", "Unknown Brand") or "Unknown Brand",
                 image_file=image_url,
                 created_at=created_at
             ),
             sustainability_report=SustainabilityReport(
                 clothing_id=clothing_id,
                 report_id=report_id,
-                brand=brand_info["brand"],
+                brand=brand_info.get("brand", "Unknown Brand") or "Unknown Brand",
                 categories=categories_data,
                 overall_score=report_data.get("overall_score", 3.0),
                 overall_description=report_data.get("overall_description", "Sustainability analysis completed"),
@@ -207,6 +230,9 @@ async def analyze_outfit(
         )
         
         logger.info(f"Outfit analysis completed successfully for user {user_id}")
+        logger.info(f"Sending {len(created_alternatives)} alternatives to frontend")
+        for i, alt in enumerate(created_alternatives):
+            logger.info(f"Alternative {i+1}: {alt.name} | image_url: {alt.image_url} | link: {alt.link}")
         return response
         
     except HTTPException:
