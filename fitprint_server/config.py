@@ -9,7 +9,7 @@ class Settings:
     # AWS Configuration
     AWS_ACCESS_KEY_ID: Optional[str] = os.getenv("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY: Optional[str] = os.getenv("AWS_SECRET_ACCESS_KEY")
-    AWS_REGION: str = os.getenv("AWS_REGION", "us-east-1")
+    AWS_REGION: str = os.getenv("AWS_REGION", "us-west-2")
     
     # DynamoDB Configuration
     DYNAMODB_TABLE_NAME: str = os.getenv("DYNAMODB_TABLE_NAME", "fitprint-table")
